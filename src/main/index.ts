@@ -1,4 +1,7 @@
 import { requestSessionFinishGoal, setFinishNotifier } from './session/finish.js';
+import { createProviderManager, registerChatgptBrowserConnector } from './providers/manager.js';
+import { registerBrowserConnectors } from './providers/browser-connectors.js';
+import { registerApiConnectors } from './providers/api-transport.js';
 /**
  * Main process entry: window, tray, and the security posture for the renderer.
  */
@@ -418,6 +421,14 @@ void app.whenReady().then(async () => {
   // The bridge serves recording and multi-agent mode both: recording needs the
   // extension to observe the chat, and multi-agent mode needs it to open worker tabs.
   // Either switch being on starts it. ipc.ts applies the same rule on a settings save.
+  // Phase 0: the provider registry knows every connector this app can drive.
+  // ChatGPT's native path is connector #1; no live path is rewired yet.
+  const providerManager = createProviderManager();
+  registerChatgptBrowserConnector(providerManager);
+  registerBrowserConnectors(providerManager);
+  registerApiConnectors(providerManager);
+  logInfo(`Connectors: ${providerManager.list().map((c) => c.id).join(', ')}`);
+
   if (getConfig().sessions.record || getConfig().multiAgent.enabled) {
     void startBridge();
   }

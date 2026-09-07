@@ -266,6 +266,10 @@ function callerConversation(tool: string, startedAt: number, requestId: string |
 
 /** Publishes both halves of one exact request proof into the call context. */
 function setCallerConversation(context: CallContext, conversationId: string | null): void {
+  // First proof wins. Browser connectors preset the identity before the kernel
+  // runs; overwriting it with null here (no request-id evidence exists) would
+  // erase the only attribution those calls have.
+  if (!conversationId && context.caller.conversationId) return;
   context.caller.conversationId = conversationId;
   const exact = conversationId ? requestCorrelation(context.caller.requestId) : null;
   context.caller.sessionId = exact?.conversationId === conversationId ? exact.sessionId : null;
@@ -456,6 +460,34 @@ async function dispatch(
  * writing it — and to make a chat with an unstoppable turn harmless, since nothing it calls
  * now can change the machine the brief describes.
  */
+/**
+ * Runs a tool handler with caller identity supplied up front instead of proven
+ * from page evidence. Used by browser connectors, whose conversations are
+ * attributed by local session identity; every capability gate, refusal and
+ * evidence recording in dispatchTracked still applies unchanged. A preset
+ * conversation id skips the request-id evidence waits in dispatchTracked.
+ */
+export async function dispatchWithKnownCaller(
+  name: string,
+  args: unknown,
+  conversationId: string,
+  transportKey: string | null,
+  surface: SurfaceId,
+  run: (args: unknown) => Promise<ToolResult>
+): Promise<ToolResult> {
+  const context: CallContext = {
+    startedAt: Date.now(),
+    transportKey,
+    agent: null,
+    caller: { transportKey, requestId: null, conversationId, sessionId: null },
+    outcome: null,
+    evidence: emptyEvidence()
+  };
+  return trackMcpRequest(() =>
+    trackInFlight(context, () => dispatchTracked(context, name, args, transportKey, null, surface, () => run(args)))
+  );
+}
+
 export const COMPACTION_IN_PROGRESS_REFUSAL =
   'COMPACTION_IN_PROGRESS: this chat is being compacted into a fresh chat, and no local tool was run. ' +
   'Nothing will run here until the handoff is done. Make no further tool calls of any kind. The latest ' +
@@ -991,7 +1023,7 @@ export interface SurfaceRegistrar {
   registered(): string[];
 }
 
-export function createRegistrar(server: McpServer, ctx: ToolContext, surface: SurfaceId, observe?: (name: string, config: { description: string; inputSchema: z.ZodType; annotations?: ToolAnnotations }) => void): SurfaceRegistrar {
+export function createRegistrar(server: McpServer, ctx: ToolContext, surface: SurfaceId, observe?: (name: string, config: { description: string; inputSchema: z.ZodType; annotations?: ToolAnnotations }) => void, capture?: Map<string, (args: never) => Promise<ToolResult>>): SurfaceRegistrar {
   const caps = ctx.caps;
   const exposedCaps = ctx.exposedCaps ?? caps;
   // These two do not follow a capability checkbox: they are whole features the user
@@ -1018,6 +1050,9 @@ export function createRegistrar(server: McpServer, ctx: ToolContext, surface: Su
     register(name, config, handler) {
       names.push(name);
       observe?.(name, config);
+      // Browser connectors reuse the exact same handlers through a capture map so
+      // one tool implementation serves every transport.
+      capture?.set(name, handler as (args: never) => Promise<ToolResult>);
       // No identity field is ever added here. Every tool's schema is exactly what its
       // surface declared: who is calling is a fact about the conversation, established from
       // page evidence in `dispatch`, and never something the model is asked to carry.

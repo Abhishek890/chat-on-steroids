@@ -317,6 +317,14 @@ const configSchema = z.object({
     })
     .optional()
     .default({ ...DEFAULT_MULTI_AGENT }),
+  browserConnectors: z
+    .object({
+      enabled: z.record(z.string().max(64), z.boolean()).optional().default({}),
+      autoExecute: z.boolean().optional().default(false),
+      autoSubmit: z.boolean().optional().default(false)
+    })
+    .optional()
+    .default({ enabled: {}, autoExecute: false, autoSubmit: false }),
   // An empty model id is repaired rather than rejected: the id is free text from a
   // provider listing that changes weekly, and a config that lost it must still load with
   // every root and permission in it intact.
@@ -408,7 +416,8 @@ export function defaultConfig(platform: NodeJS.Platform = process.platform, rele
     sessions: { ...DEFAULT_SESSIONS },
     compaction: { ...DEFAULT_COMPACTION },
     multiAgent: { ...FIRST_LAUNCH_MULTI_AGENT },
-    goal: { ...DEFAULT_GOAL }
+    goal: { ...DEFAULT_GOAL },
+    browserConnectors: { enabled: {}, autoExecute: false, autoSubmit: false }
   };
 }
 

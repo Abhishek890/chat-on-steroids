@@ -38,10 +38,12 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import type { BridgeStatus } from '../shared/types.js';
 import { CHAT_SILENCE_MS, CONTINUATION_MARKER, isReasoningEffort, type ReasoningEffort, type SessionEvent, type SessionOrigin } from '../shared/session.js';
-import { isChatBlocked, chatBlockedAt } from './session/blocked-chats.js';
+import { isChatBlocked, chatBlockedAt, setConnectorChatBlocked } from './session/blocked-chats.js';
 export { CHAT_ACTIVE_MS, CHAT_SILENCE_MS } from '../shared/session.js';
 import { getConfig, updateConfig } from './config.js';
 import { getSecret, secureStorageStatus, setSecret } from './secrets.js';
+import { browserToolCatalog, executeBrowserTool } from './providers/browser-tools.js';
+import { browserEnablement, browserHealthProbe } from './providers/browser-connectors.js';
 import {
   acceptGoalReplyNow,
   astraFinishOnly,
@@ -1459,6 +1461,74 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       },
       origin
     );
+  }
+
+  // Browser connectors (MCP-SuperAssistant sites): prompt-protocol tool calls
+  // executed through the same kernel entry as a ChatGPT call. Attribution is
+  // session-scoped, never request-id proven; capability gates still apply.
+  if (route === '/browser/catalog' && req.method === 'GET') {
+    const catalog = await browserToolCatalog();
+    return json(res, 200, { ok: true, data: catalog }, origin);
+  }
+  if (route === '/browser/execute' && req.method === 'POST') {
+    const body = await readBody(req) as Record<string, unknown>;
+    const tool = typeof body?.tool === 'string' ? body.tool : '';
+    const conversationId = typeof body?.conversationId === 'string' ? body.conversationId : '';
+    const siteId = typeof body?.siteId === 'string' ? body.siteId : '';
+    const args = body?.args && typeof body.args === 'object' && !Array.isArray(body.args)
+      ? (body.args as Record<string, unknown>)
+      : {};
+    if (tool.length === 0 || tool.length > 128 || conversationId.length > 256 || siteId.length > 64) {
+      return json(res, 400, { error: 'invalid_browser_call' }, origin);
+    }
+    const result = await executeBrowserTool({ tool, args, conversationId, siteId });
+    return json(res, 200, { ok: true, data: { result } }, origin);
+  }
+
+  // App-owned enablement and health for the browser connectors.
+  if (route === '/browser/settings' && req.method === 'GET') {
+    return json(res, 200, { ok: true, data: browserEnablement(getConfig()) }, origin);
+  }
+  if (route === '/browser/settings' && req.method === 'POST') {
+    const body = await readBody(req) as Record<string, unknown>;
+    const enabled = body?.enabled && typeof body.enabled === 'object' && !Array.isArray(body.enabled)
+      ? (body.enabled as Record<string, unknown>)
+      : {};
+    const known = new Set(browserEnablement(getConfig()).sites);
+    const cleanEnabled: Record<string, boolean> = {};
+    for (const [siteId, value] of Object.entries(enabled)) {
+      if (known.has(siteId) && value === true) cleanEnabled[siteId] = true;
+    }
+    await updateConfig((previous) => ({
+      ...previous,
+      browserConnectors: {
+        enabled: cleanEnabled,
+        autoExecute: body?.autoExecute === true,
+        autoSubmit: body?.autoSubmit === true
+      }
+    }));
+    return json(res, 200, { ok: true, data: browserEnablement(getConfig()) }, origin);
+  }
+  if (route === '/browser/health' && req.method === 'GET') {
+    return json(res, 200, { ok: true, data: browserHealthProbe(getConfig()) }, origin);
+  }
+
+  // Connector-scoped chat block. Same refusal text and same kernel gate as a
+  // blocked ChatGPT conversation; the key shape is "siteId:segment".
+  if (route === '/browser/block' && req.method === 'POST') {
+    const body = await readBody(req) as Record<string, unknown>;
+    const siteId = typeof body?.siteId === 'string' ? body.siteId : '';
+    const segment = typeof body?.segment === 'string' ? body.segment : '';
+    const blockedNext = body?.blocked === true;
+    if (!/^[a-z0-9][a-z0-9-]{0,47}$/i.test(siteId) || !/^[a-z0-9][a-z0-9_-]{3,80}$/i.test(segment)) {
+      return json(res, 400, { error: 'invalid_browser_block' }, origin);
+    }
+    try {
+      setConnectorChatBlocked(`${siteId}--${segment}`, blockedNext);
+      return json(res, 200, { ok: true }, origin);
+    } catch (err) {
+      return json(res, 400, { error: err instanceof Error ? err.message : 'block_failed' }, origin);
+    }
   }
 
   if (route === '/usage' && req.method === 'POST') {
