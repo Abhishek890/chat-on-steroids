@@ -1,23 +1,11 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "ESLint",
+  "extends": "./packages/tsconfig/base.json",
   "compilerOptions": {
-    "target": "ES2023",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2023", "DOM"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "exactOptionalPropertyTypes": false,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "noEmit": true,
-    "types": ["node", "electron-vite/node"]
+    "noImplicitAny": false,
+    "noEmit": false,
+    "target": "ESNext"
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "electron.vite.config.ts"]
+  "include": ["eslint.config.ts"]
 }
