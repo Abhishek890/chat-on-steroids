@@ -30,6 +30,7 @@ import {
 import type { SwarmState } from '../shared/session.js';
 import { $, ago, el, icon, run, shortAgo, toast } from './dom.js';
 import { chatApply, chatSettingsPatch, chatVisible, initChat, openChatView } from './chat.js';
+import { initApiChat, showApiScreen } from './api-chat.js';
 
 declare global {
   interface Window {
@@ -111,8 +112,9 @@ let showAllSteps = false;
 // ------------------------------------------------------------------- tabs
 
 function showTab(name: string): void {
-  const settings = name !== 'chat';
-  document.querySelector<HTMLElement>('.app')!.dataset.screen = settings ? 'settings' : 'chat';
+  const isApi = name === 'api';
+  const settings = name !== 'chat' && !isApi;
+  document.querySelector<HTMLElement>('.app')!.dataset.screen = settings ? 'settings' : isApi ? 'api' : 'chat';
   document.querySelector<HTMLElement>('.sidebar-brand')!.hidden = settings;
   $('workspaceSettings').hidden = settings;
   if (name === 'usage') void refreshUsage();
@@ -120,6 +122,7 @@ function showTab(name: string): void {
   $('backToChat').hidden = !settings;
   document.querySelector<HTMLElement>('.sidebar-sessions')!.hidden = settings;
   $('newChat').hidden = settings;
+  $('apiChat').hidden = settings || isApi;
   if (name === 'settings') openChatView('settings');
   else if (name === 'chat') openChatView('timeline');
 
@@ -129,9 +132,10 @@ function showTab(name: string): void {
   for (const panel of document.querySelectorAll<HTMLElement>('.panel')) {
     panel.classList.toggle('is-active', panel.dataset.panel === (name === 'settings' ? 'chat' : name));
   }
+  if (isApi) showApiScreen();
   // The Chat panel is the only one that costs anything to keep fresh, so it only
   // reloads while it is on screen.
-  chatVisible(name === 'chat' || name === 'settings');
+  chatVisible((name === 'chat' || name === 'settings') && !isApi);
   // A feed that was appended to while its panel was hidden could not be scrolled then —
   // a hidden element has no scroll height. Pin it now that it has one, so a panel always
   // opens on the newest line rather than on whatever was oldest in the buffer.
@@ -139,6 +143,7 @@ function showTab(name: string): void {
 }
 
 $('backToChat').addEventListener('click', () => showTab('chat'));
+$('apiChat').addEventListener('click', () => showTab('api'));
 $('workspaceSettings').addEventListener('click', () => showTab('home'));
 $('chatSettingsBtn').addEventListener('click', () => showTab('settings'));
 $('sessionList').addEventListener('click', () => showTab('chat'));
@@ -1311,7 +1316,7 @@ function logRow(entry: LogEntry): HTMLElement {
   return line;
 }
 
-const FEEDS = ['homeFeed', 'fullFeed'];
+const FEEDS = ['homeFeed', 'fullFeed', 'apiTimeline'];
 
 /**
  * Whether each feed is following the newest line.
@@ -1656,6 +1661,7 @@ async function refresh(): Promise<void> {
 
 buildGroups();
 initUsage();
+initApiChat();
 initBrowserPreferences();
 initChat({ save: () => save(), state: () => state });
 

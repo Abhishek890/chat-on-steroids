@@ -155,6 +155,15 @@ const api = {
   // happened comes back in the result — the renderer does not decide it.
   clearAgent: (id: string, runId?: string) => call<ClearAgentResult>('swarm:clearAgent', { id, runId }),
 
+  // Phase 3 API connectors.
+  apiConnectors: () => call<import('../shared/providers.js').ApiConnectorInfo[]>('api:connectors'),
+  apiModels: (providerId: string) =>
+    call<import('../shared/providers.js').ApiModelList>('api:models', { providerId }),
+  apiSessionCreate: (providerId: string, model: string, allowWrite = false) =>
+    call<{ sessionId: string } | null>('api:session:create', { providerId, model, allowWrite }),
+  apiSessionSend: (sessionId: string, text: string, images?: { name: string; dataUrl: string }[]) =>
+    call<import('../shared/providers.js').TurnReceipt>('api:session:send', { sessionId, text, images }),
+  apiSessionClose: (sessionId: string) => call<boolean>('api:session:close', { sessionId }),
   onStateChanged: (listener: (state: AppState) => void): (() => void) => {
     const wrapped = (_event: unknown, state: AppState): void => listener(state);
     ipcRenderer.on('state:changed', wrapped);
@@ -187,6 +196,11 @@ const api = {
     const wrapped = (_event: unknown, state: SwarmState): void => listener(state);
     ipcRenderer.on('swarm:changed', wrapped);
     return () => ipcRenderer.removeListener('swarm:changed', wrapped);
+  },
+  onApiEvent: (listener: (event: { sessionId: string; event: import('../shared/providers.js').TurnEvent }) => void): (() => void) => {
+    const wrapped = (_event: unknown, data: { sessionId: string; event: import('../shared/providers.js').TurnEvent }): void => listener(data);
+    ipcRenderer.on('api:event', wrapped);
+    return () => ipcRenderer.removeListener('api:event', wrapped);
   }
 };
 

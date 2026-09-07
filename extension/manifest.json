@@ -58,6 +58,125 @@
       ],
       "world": "MAIN",
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://*.gemini.google.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.aistudio.google.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.perplexity.ai/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.grok.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.x.com/i/grok*",
+        "*://*.twitter.com/i/grok*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.openrouter.ai/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.chat.deepseek.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.t3.chat/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://github.com/*",
+        "*://*.copilot.github.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.chat.mistral.ai/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.kimi.com/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.chat.z.ai/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.chat.qwen.ai/*"
+      ],
+      "js": [
+        "browser-connector.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

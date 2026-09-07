@@ -267,6 +267,17 @@ export interface MultiAgentSettings {
   recoverAgentTabs: boolean;
 }
 
+/**
+ * Per-site enablement for the browser connectors (MCP-SuperAssistant sites).
+ * The app owns the switches; the extension reads them through the bridge so a
+ * site never activates unless the user turned it on here.
+ */
+export interface BrowserConnectorsSettings {
+  enabled: Record<string, boolean>;
+  autoExecute: boolean;
+  autoSubmit: boolean;
+}
+
 export interface Config {
   roots: Root[];
   capabilities: Capabilities;
@@ -277,6 +288,7 @@ export interface Config {
   compaction: CompactionSettings;
   multiAgent: MultiAgentSettings;
   goal: GoalSettings;
+  browserConnectors?: BrowserConnectorsSettings;
 }
 
 export type ConnectionState =

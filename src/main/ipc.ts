@@ -13,6 +13,8 @@ import { cancelTaskRequest, runTaskRequest } from './task-request.js';
 import { randomUUID } from 'node:crypto';
 import { retryGoalBrowserHelper } from './goal.js';
 import { requestBrowserPreferences } from './browser-preferences.js';
+import { apiConnectorInfo, apiProvider } from './providers/api-catalog.js';
+import { ApiSessionManager } from './providers/api-sessions.js';
 import { sendDesktopInput, cancelDesktopInput, retryQueuedInputBrowser, wakeBrowserUrl } from './session/start-input.js';
 /**
  * IPC surface.
@@ -359,8 +361,66 @@ function handle<T>(channel: string, fn: (payload: unknown) => Promise<T>): void 
   });
 }
 
+/**
+ * Owns live API conversations for the renderer surface. Stream events are
+ * forwarded through the window on the 'api:event' channel.
+ */
+const apiSessionManager = new ApiSessionManager();
+
 export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall: () => void): void {
   handle('usage:get', () => usageOverview());
+
+  // Phase 3 API connectors: catalog, model list and live sessions.
+  handle('api:connectors', () => apiConnectorInfo());
+  handle('api:models', async (payload) => {
+    const request = z.object({ providerId: z.string().min(1).max(64) }).parse(payload);
+    if (request.providerId === 'openrouter') {
+      const page = await listGoalModels(0, 100);
+      return { providerId: request.providerId, models: page.models.map((m) => m.id) };
+    }
+    const provider = apiProvider(request.providerId);
+    return { providerId: request.providerId, models: provider?.knownModels ?? [] };
+  });
+  handle('api:session:create', async (payload) => {
+    const request = z
+      .object({
+        providerId: z.string().min(1).max(64),
+        model: z.string().min(1).max(80),
+        allowWrite: z.boolean().optional()
+      })
+      .parse(payload);
+    const created = await apiSessionManager.create(request.providerId, request.model, {
+      allowWrite: request.allowWrite
+    });
+    if (created) {
+      const session = apiSessionManager.get(created.sessionId);
+      if (session) {
+        session.stream((event) =>
+          getWindow()?.webContents.send('api:event', { sessionId: created.sessionId, event })
+        );
+      }
+    }
+    return created;
+  });
+  handle('api:session:send', async (payload) => {
+    const request = z
+      .object({
+        sessionId: z.string().min(1).max(80),
+        text: z.string().min(1).max(16000),
+        images: z
+          .array(z.object({ name: z.string().min(1).max(110), dataUrl: z.string().max(512100) }))
+          .max(4)
+          .optional()
+      })
+      .parse(payload);
+    const session = apiSessionManager.get(request.sessionId);
+    if (!session) throw new Error('Unknown API session');
+    return session.sendUserTurn({ text: request.text, images: request.images });
+  });
+  handle('api:session:close', async (payload) => {
+    const request = z.object({ sessionId: z.string().min(1).max(80) }).parse(payload);
+    return apiSessionManager.close(request.sessionId);
+  });
   handle('state:get', async () => {
     const state = await buildState();
     // Native package smoke uses this as the end-to-end renderer readiness barrier. Unlike

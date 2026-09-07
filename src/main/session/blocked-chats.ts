@@ -139,6 +139,31 @@ export function setChatBlocked(conversationId: string, next: boolean): void {
   writeDurableSoon(BLOCKED_STATE, snapshot());
 }
 
+/**
+ * Blocks or releases one connector-scoped conversation.
+ *
+ * A browser connector names its conversation "siteId--segment" (see
+ * providers/browser-connectors.ts and the extension), and the kernel receives
+ * that exact string as the caller conversation id — so blocking it here is
+ * enforced by the same gate that refuses a blocked ChatGPT chat. One store,
+ * one durable file, two key shapes.
+ */
+const VALID_CONNECTOR_KEY = /^[a-z0-9][a-z0-9-]{0,47}--[a-z0-9][a-z0-9_-]{3,80}$/i;
+
+export function setConnectorChatBlocked(key: string, next: boolean): void {
+  if (!VALID_CONNECTOR_KEY.test(key)) throw new Error('Not a connector-scoped conversation key');
+  if (next === blocked.has(key)) return;
+  if (next) {
+    if (blocked.size >= MAX_BLOCKED_CHATS) {
+      throw new Error(`Too many blocked chats (${MAX_BLOCKED_CHATS}). Release one before blocking another.`);
+    }
+    blocked.set(key, Date.now());
+  } else {
+    blocked.delete(key);
+  }
+  writeDurableSoon(BLOCKED_STATE, snapshot());
+}
+
 export function resetBlockedChatsForTests(): void {
   blocked.clear();
   restored = false;

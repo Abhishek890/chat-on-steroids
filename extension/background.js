@@ -2287,6 +2287,24 @@ const HANDLERS = {
     if (body.length > 24000) return { ok: false };
     return call('/usage', { method: 'POST', body });
   },
+  async cos_browser_catalog(message, _sender, source) {
+    if (!ownsDocument(source)) return { ok: false, error: 'stale_document' };
+    return call('/browser/catalog', { method: 'GET' });
+  },
+  async cos_browser_execute(message, _sender, source) {
+    if (!ownsDocument(source)) return { ok: false, error: 'stale_document' };
+    const body = {
+      tool: String(message.tool || '').slice(0, 128),
+      args: message.args && typeof message.args === 'object' && !Array.isArray(message.args) ? message.args : {},
+      conversationId: String(message.conversationId || '').slice(0, 256),
+      siteId: String(message.siteId || '').slice(0, 64)
+    };
+    return call('/browser/execute', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async cos_browser_settings(message, _sender, source) {
+    if (!ownsDocument(source)) return { ok: false, error: 'stale_document' };
+    return call('/browser/settings', { method: 'GET' });
+  },
   async desktop_input(message, sender, source) {
     if (!ownsDocument(source)) return { ok: false, error: 'stale_document' };
     const id = String(message.id || '');

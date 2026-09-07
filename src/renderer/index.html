@@ -76,6 +76,7 @@
         <button class="btn" id="backToChat" type="button" hidden>← Back to chat</button>
         <div class="sidebar-brand"><span class="mark"><svg class="ico" viewBox="0 0 24 24"><use href="#i-mark" /></svg></span><strong>Chat On Steroids</strong></div>
         <button class="btn new-chat" id="newChat" type="button"><svg class="ico" viewBox="0 0 24 24"><use href="#i-plus" /></svg>New chat</button>
+        <button class="btn" id="apiChat" type="button"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bolt" /></svg>API chat</button>
       <nav id="tabs" aria-label="Settings navigation" hidden>
         <button class="is-sel" data-tab="home" type="button">
           <svg class="ico" viewBox="0 0 24 24"><use href="#i-home" /></svg>Workspace
@@ -826,6 +827,26 @@
         </section>
 
         <!-- ======================================================== Activity -->
+        <section class="panel" data-panel="api">
+          <section class="card is-session">
+            <div class="subhead">
+              <span class="subhead-note" id="apiStatus">Pick a provider and model, then start a chat.</span>
+            </div>
+            <div class="setting"><span class="setting-text"><b>Provider</b><em>OpenAI-compatible chat-completions providers.</em></span><select id="apiProvider" class="input"></select></div>
+            <div class="setting"><span class="setting-text"><b>Model</b><em id="apiModelNote">Models for the selected provider.</em></span><select id="apiModel" class="input"></select></div>
+            <div class="setting" id="apiKeyRow" hidden><span class="setting-text"><b>OpenRouter API key</b><em>Used for API chat. Stored in your OS keychain.</em></span><input id="apiProviderKey" class="input" type="password" autocomplete="off" placeholder="sk-or-…"><button id="apiKeySave" class="btn" type="button">Save key</button></div>
+            <div class="setting"><span class="setting-text"><b>Write access</b><em>Allow tools that change files or run commands. Off by default.</em></span><input id="apiAllowWrite" type="checkbox"></div>
+            <div class="setting"><button id="apiNewChat" class="btn" type="button">New API chat</button></div>
+            <div class="scroll" id="apiTimeline"></div>
+            <p class="empty" id="apiTimelineEmpty"><svg class="ico welcome-mark" viewBox="0 0 24 24"><use href="#i-mark" /></svg><span>Start an API chat to begin.</span></p>
+            <form class="composer" id="apiComposer" hidden>
+              <label class="sr-only" for="apiInput">Message the API model</label>
+              <textarea id="apiInput" rows="1" maxlength="16000" placeholder="Ask anything…"></textarea>
+              <div class="composer-toolbar"><button id="apiSend" class="btn" type="submit" disabled>Send</button></div>
+            </form>
+          </section>
+        </section>
+
         <section class="panel" data-panel="activity">
           <section class="card">
             <h2>
