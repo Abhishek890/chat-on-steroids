@@ -9,6 +9,14 @@ The app and the `extension/` companion are versioned together. **Reload the
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.0.7] — 2026-09-06
+
+**feat.**
+feat: multi-provider integration — browser connectors, sessions, API transport (phases 0–3) by @usehoplite[bot] in #1
+New Contributors
+@usehoplite[bot] made their first contribution in #1
+Full Changelog: https://github.com/Abhishek890/chat-on-steroids/commits/V1
+
 ## [2.0.6] — 2026-09-06
 
 **I am exhausted.**
